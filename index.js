@@ -1,12 +1,16 @@
 const express = require('express');
 const multer = require('multer');
 const Quagga = require('quagga');
+const cors = require('cors');  // Import CORS
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
+
+// Enable CORS for all routes
+app.use(cors());
 
 app.post('/scan', upload.single('image'), (req, res) => {
   const buffer = req.file.buffer;
