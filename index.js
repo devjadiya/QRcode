@@ -7,7 +7,9 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Allow all origins (use cautiously in production)
-app.use(cors());  // This allows all origins by default
+app.use(cors({
+    origin: 'http://127.0.0.1:3000' // Only allow this frontend URL
+  }));
 
 // Set up multer for file upload
 const storage = multer.memoryStorage();
