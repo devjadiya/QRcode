@@ -15,6 +15,26 @@ This project is a RESTful API built with **Express.js** that allows users to sca
 - **Sharp** for image processing (grayscale, resizing, contrast enhancement).
 - **CORS** for cross-origin requests.
 - **Babel Polyfill** for backward compatibility.
+- 
+## Use the Live API
+For now, you can also use the live API endpoint hosted on Vercel to scan barcodes. You can access it using the following link:
+
+### API Endpoint:
+- [https://qrcode-rosy-rho.vercel.app/api/scan](https://qrcode-rosy-rho.vercel.app/api/scan)
+
+### How to use in Postman:
+1. Open Postman.
+2. Select **POST** as the request method.
+3. Enter the following URL: `https://qrcode-rosy-rho.vercel.app/api/scan`.
+4. In the **Body** tab, choose **raw** and select **JSON** format.
+5. Provide the following data structure for the image (make sure to replace the `imageBase64` field with your actual Base64 encoded image):
+```json
+{
+    "imageBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/..."
+}
+```
+6. Click Send to get the response.
+You will receive the decoded barcode or an error message depending on the image's validity.
 
 ## Installation
 
