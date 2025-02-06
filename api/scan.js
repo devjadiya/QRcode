@@ -46,7 +46,19 @@ app.post('/api/scan', upload.single('image'), (req, res) => {
     Quagga.decodeSingle({
         src: imageDataUri,
         numOfWorkers: 0,
-        decoder: { readers: ['ean_reader', 'code_128_reader'] }
+        locate: true,  // Enables barcode localization
+        decoder: { 
+            readers: [
+                'ean_reader', 'code_128_reader', 'code_39_reader',
+                'code_93_reader', 'upc_reader', 'upc_e_reader',
+                'i2of5_reader'  // More barcode types for better detection
+            ],
+            multiple: false  // Only scan one barcode at a time
+        },
+        locator: {
+            halfSample: true, // Speeds up processing
+            patchSize: 'medium', // Can be 'small', 'medium', or 'large'
+        }
     }, function(result) {
         if (result && result.codeResult) {
             res.json({ barcode: result.codeResult.code });
@@ -54,6 +66,7 @@ app.post('/api/scan', upload.single('image'), (req, res) => {
             res.json({ error: 'No barcode detected' });
         }
     });
+    
 });
 
 app.listen(port, () => {
