@@ -1,6 +1,5 @@
 require('@babel/polyfill');
 const express = require('express');
-const multer = require('multer');
 const cors = require('cors');
 const Quagga = require('@ericblade/quagga2');
 const sharp = require('sharp');
@@ -9,44 +8,36 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // ✅ Allow large base64 images
 
-// ✅ Multer Setup
-const storage = multer.memoryStorage();
-const upload = multer({ 
-    storage: storage, 
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
-            cb(null, true);
-        } else {
-            cb(new Error('Invalid file type. Only JPEG and PNG are allowed.'));
-        }
-    }
-});
+// ✅ Barcode Scanning Route (Base64 Input)
+app.post('/api/scan', async (req, res) => {
+    const { imageBase64 } = req.body;
 
-// ✅ Barcode Scanning Route
-app.post('/api/scan', upload.single('image'), async (req, res) => {
-    if (!req.file) {
-        return res.status(400).json({ error: 'No file uploaded or invalid format' });
+    if (!imageBase64) {
+        return res.status(400).json({ error: 'No base64 image provided' });
     }
 
     try {
-        // ✅ Preprocess Image: Convert to Grayscale & Enhance Contrast
-        const processedImage = await sharp(req.file.buffer)
+        // ✅ Convert Base64 to Buffer
+        const imageBuffer = Buffer.from(imageBase64, 'base64');
+
+        // ✅ Preprocess Image (Grayscale & Contrast Enhancement)
+        const processedImage = await sharp(imageBuffer)
             .greyscale()
             .normalise()
             .toBuffer();
 
-        // ✅ Convert to Base64 for Quagga
-        const imageDataUri = `data:${req.file.mimetype};base64,${processedImage.toString('base64')}`;
+        // ✅ Convert Processed Image to Base64
+        const processedBase64 = `data:image/png;base64,${processedImage.toString('base64')}`;
 
         // ✅ Quagga Barcode Scanner
         Quagga.decodeSingle({
-            src: imageDataUri,
-            numOfWorkers: 4, // Use multiple workers for faster processing
-            locate: true, // Helps detect barcodes more effectively
+            src: processedBase64,
+            numOfWorkers: 4,
+            locate: true,
             inputStream: {
-                size: 800, // Increase input size for better recognition
+                size: 800, // Improve resolution
                 singleChannel: false
             },
             decoder: {
