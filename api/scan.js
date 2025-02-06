@@ -44,8 +44,9 @@ app.post('/api/scan', upload.single('image'), async (req, res) => {
 
     try {
         const processedImage = await sharp(req.file.buffer)
-            .greyscale()  // Convert to grayscale
-            .sharpen()    // Enhance sharpness
+            .resize({ width: 800 }) // ✅ Resize to 800px width for better detection
+            .greyscale()  // ✅ Convert to grayscale for better barcode contrast
+            .sharpen()    // ✅ Increase edge sharpness
             .toBuffer();
 
         const imageDataUri = `data:${req.file.mimetype};base64,${processedImage.toString('base64')}`;
@@ -55,7 +56,7 @@ app.post('/api/scan', upload.single('image'), async (req, res) => {
             numOfWorkers: 0,
             locate: true,
             decoder: { readers: ['ean_reader', 'code_128_reader', 'code_39_reader'] },
-            locator: { halfSample: true, patchSize: 'medium' }
+            locator: { halfSample: false, patchSize: 'large' }
         }, function(result) {
             if (result && result.codeResult) {
                 res.json({ barcode: result.codeResult.code });
