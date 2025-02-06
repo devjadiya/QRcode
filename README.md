@@ -22,3 +22,68 @@ This project is a RESTful API built with **Express.js** that allows users to sca
 ```bash
 git clone https://github.com/your-username/barcode-scanning-api.git
 cd barcode-scanning-api
+```
+### 2. Install dependencies:
+```bash
+npm install
+```
+### 3. Run the API locally:
+```bash
+npm start
+```
+The server will start at http://localhost:3000
+
+## API Endpoint
+POST /api/scan
+Description:
+Input: A Base64 encoded image of a barcode.
+Output: The decoded barcode (if successful) or an error message.
+Request Example:
+```bash
+curl -X POST http://localhost:3000/api/scan -H "Content-Type: application/json" -d '{
+    "imageBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/..."
+}'
+```
+Response Example:
+```json
+{
+    "barcode": "123456789012"
+}
+```
+Error Responses:
+No base64 image provided:
+```json
+{
+    "error": "No base64 image provided"
+}
+```
+Unsupported image format:
+```json
+{
+    "error": "Unsupported image format. Use JPEG, PNG, or WebP"
+}
+```
+No barcode detected:
+```json
+
+{
+    "error": "No barcode detected. Try again with a clearer image"
+}
+```
+Internal server error:
+
+```json
+
+{
+    "error": "Internal server error"
+}
+```
+
+## Deployment
+Deploy on Vercel
+Fork this repository on GitHub.
+Go to Vercel, sign in, and click New Project.
+Select your forked repository and click Deploy.
+
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
