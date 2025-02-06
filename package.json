@@ -19,7 +19,8 @@
     "multer": "^1.4.5-lts.1",
     "ndarray": "^1.0.19",
     "ndarray-linear-interpolate": "^1.0.0",
-    "quagga": "^0.12.1"
+    "quagga": "^0.12.1",
+    "sharp": "^0.33.5"
   },
   "description": ""
 }
