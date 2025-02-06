@@ -12,6 +12,7 @@
     "@babel/polyfill": "^7.12.1",
     "@ericblade/quagga2": "^1.8.4",
     "cors": "^2.8.5",
+    "ejs": "^3.1.10",
     "express": "^4.21.2",
     "get-pixels": "^3.3.3",
     "gl-matrix": "^3.4.3",
