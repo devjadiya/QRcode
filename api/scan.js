@@ -12,24 +12,33 @@ app.use(express.json({ limit: '10mb' })); // ✅ Allow large base64 images
 
 // ✅ Barcode Scanning Route (Base64 Input)
 app.post('/api/scan', async (req, res) => {
-    const { imageBase64 } = req.body;
-
-    if (!imageBase64) {
-        return res.status(400).json({ error: 'No base64 image provided' });
-    }
-
     try {
-        // ✅ Convert Base64 to Buffer
-        const imageBuffer = Buffer.from(imageBase64, 'base64');
+        const { imageBase64 } = req.body;
 
-        // ✅ Preprocess Image (Grayscale & Contrast Enhancement)
-        const processedImage = await sharp(imageBuffer)
-            .greyscale()
-            .normalise()
+        if (!imageBase64) {
+            return res.status(400).json({ error: 'No base64 image provided' });
+        }
+
+        // ✅ Extract MIME type (Check for valid image format)
+        const matches = imageBase64.match(/^data:image\/(jpeg|png|webp);base64,/);
+        if (!matches) {
+            return res.status(400).json({ error: 'Unsupported image format. Use JPEG, PNG, or WebP' });
+        }
+
+        // ✅ Remove Base64 Prefix & Convert to Buffer
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        const imageBuffer = Buffer.from(base64Data, "base64");
+
+        // ✅ Preprocess Image for Better Barcode Detection
+        const processedImageBuffer = await sharp(imageBuffer)
+            .resize(800) // Resize for better resolution
+            .greyscale() // Convert to grayscale
+            .normalise() // Enhance contrast
+            .toFormat("png") // Ensure PNG format for Quagga
             .toBuffer();
 
-        // ✅ Convert Processed Image to Base64
-        const processedBase64 = `data:image/png;base64,${processedImage.toString('base64')}`;
+        // ✅ Convert Processed Image to Base64 for Quagga
+        const processedBase64 = `data:image/png;base64,${processedImageBuffer.toString('base64')}`;
 
         // ✅ Quagga Barcode Scanner
         Quagga.decodeSingle({
@@ -52,9 +61,9 @@ app.post('/api/scan', async (req, res) => {
             }
         }, function(result) {
             if (result && result.codeResult) {
-                res.json({ barcode: result.codeResult.code });
+                return res.json({ barcode: result.codeResult.code });
             } else {
-                res.json({ error: 'No barcode detected' });
+                return res.status(404).json({ error: 'No barcode detected. Try again with a clearer image' });
             }
         });
 
@@ -64,8 +73,9 @@ app.post('/api/scan', async (req, res) => {
     }
 });
 
+// ✅ Start Server
 app.listen(port, () => {
-    console.log(`Backend is running at http://localhost:${port}`);
+    console.log(`🚀 Backend running at http://localhost:${port}`);
 });
 
-module.exports = app; // Required for Vercel
+module.exports = app; // Required for Vercel Deployment
