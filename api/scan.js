@@ -8,9 +8,9 @@ const app = express();
 const port = 3000;
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Allow large base64 images
+app.use(express.json({ limit: '10mb' })); // ✅ Allow large base64 images
 
-// Barcode Scanning Route (Base64 Input)
+// ✅ Barcode Scanning Route (Base64 Input)
 app.post('/api/scan', async (req, res) => {
     try {
         const { imageBase64 } = req.body;
@@ -19,71 +19,61 @@ app.post('/api/scan', async (req, res) => {
             return res.status(400).json({ error: 'No base64 image provided' });
         }
 
-        // Extract MIME type and validate format
+        // ✅ Extract MIME type (Check for valid image format)
         const matches = imageBase64.match(/^data:image\/(jpeg|png|webp);base64,/);
         if (!matches) {
             return res.status(400).json({ error: 'Unsupported image format. Use JPEG, PNG, or WebP' });
         }
 
-        // Convert Base64 to Buffer
+        // ✅ Remove Base64 Prefix & Convert to Buffer
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
         const imageBuffer = Buffer.from(base64Data, "base64");
 
-        // Preprocess Image for Better Barcode Detection
+        // ✅ Preprocess Image for Better Barcode Detection
         const processedImageBuffer = await sharp(imageBuffer)
-            .rotate()  // Automatically corrects image rotation
-            .resize({ width: 1024 })  // Maintain aspect ratio
-            .greyscale()              // Convert to grayscale
-            .normalise()              // Enhance contrast
-            .sharpen({ sigma: 1 })    // Sharpen edges without making the image noisy
-            .threshold(100)           // Convert to high-contrast binary image
-            .toFormat("png")
+            .resize(800) // Resize for better resolution
+            .greyscale() // Convert to grayscale
+            .normalise() // Enhance contrast
+            .toFormat("png") // Ensure PNG format for Quagga
             .toBuffer();
 
-        // Convert Processed Image to Base64 for Quagga
+        // ✅ Convert Processed Image to Base64 for Quagga
         const processedBase64 = `data:image/png;base64,${processedImageBuffer.toString('base64')}`;
 
-        console.log("✅ Image processed successfully");
-
-        // Run Barcode Detection in a Promise
-        const barcode = await new Promise((resolve, reject) => {
-            Quagga.decodeSingle({
-                src: processedBase64,
-                numOfWorkers: 0, // Required in Node.js
-                locate: true,
-                inputStream: {
-                    size: 1280, // Higher resolution for better recognition
-                    singleChannel: true // Process as grayscale
-                },
-                locator: {
-                    patchSize: "large", // Larger patch size for better accuracy
-                    halfSample: false
-                },
-                decoder: {
-                    readers: ['code_128_reader'] // Focus only on Code 128
-                },
-                debug: true // Enable debugging logs
-            }, (result) => {
-                if (result && result.codeResult) {
-                    console.log("✅ Barcode Detected:", result.codeResult.code);
-                    resolve(result.codeResult.code);
-                } else {
-                    console.log("❌ No barcode detected.");
-                    reject(new Error("No barcode detected. Try again with a clearer image."));
-                }
-            });
+        // ✅ Quagga Barcode Scanner
+        Quagga.decodeSingle({
+            src: processedBase64,
+            numOfWorkers: 4,
+            locate: true,
+            inputStream: {
+                size: 800, // Improve resolution
+                singleChannel: false
+            },
+            decoder: {
+                readers: [
+                    'ean_reader',
+                    'upc_reader',
+                    'code_128_reader',
+                    'code_39_reader',
+                    'code_93_reader',
+                    'i2of5_reader'
+                ]
+            }
+        }, function(result) {
+            if (result && result.codeResult) {
+                return res.json({ barcode: result.codeResult.code });
+            } else {
+                return res.status(404).json({ error: 'No barcode detected. Try again with a clearer image' });
+            }
         });
 
-        // Send Success Response
-        return res.json({ barcode });
-
     } catch (error) {
-        console.error('❌ Error:', error);
-        return res.status(500).json({ error: error.message || 'Internal server error' });
+        console.error('Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
-// Start Server
+// ✅ Start Server
 app.listen(port, () => {
     console.log(`🚀 Backend running at http://localhost:${port}`);
 });
