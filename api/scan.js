@@ -31,11 +31,13 @@ app.post('/api/scan', async (req, res) => {
 
         // Preprocess Image for Better Barcode Detection
         const processedImageBuffer = await sharp(imageBuffer)
-            .resize(1024) // Resize to improve detection
-            .greyscale() // Convert to grayscale
-            .normalise() // Enhance contrast
-            .sharpen() // Improve edges
-            .toFormat("png") // Convert to PNG
+            .rotate()  // Automatically corrects image rotation
+            .resize({ width: 1024 })  // Maintain aspect ratio
+            .greyscale()              // Convert to grayscale
+            .normalise()              // Enhance contrast
+            .sharpen({ sigma: 1 })    // Sharpen edges without making the image noisy
+            .threshold(100)           // Convert to high-contrast binary image
+            .toFormat("png")
             .toBuffer();
 
         // Convert Processed Image to Base64 for Quagga
@@ -50,21 +52,17 @@ app.post('/api/scan', async (req, res) => {
                 numOfWorkers: 0, // Required in Node.js
                 locate: true,
                 inputStream: {
-                    size: 1024, // Higher resolution for better recognition
-                    singleChannel: false
+                    size: 1280, // Higher resolution for better recognition
+                    singleChannel: true // Process as grayscale
+                },
+                locator: {
+                    patchSize: "large", // Larger patch size for better accuracy
+                    halfSample: false
                 },
                 decoder: {
-                    readers: [
-                        'ean_reader', // EAN-13, EAN-8
-                        'upc_reader', // UPC-A
-                        'upc_e_reader', // UPC-E
-                        'code_128_reader', // Code 128
-                        'code_39_reader', // Code 39
-                        'code_93_reader', // Code 93
-                        'i2of5_reader', // Interleaved 2 of 5
-                        '2of5_reader' // Standard 2 of 5
-                    ]
-                }
+                    readers: ['code_128_reader'] // Focus only on Code 128
+                },
+                debug: true // Enable debugging logs
             }, (result) => {
                 if (result && result.codeResult) {
                     console.log("✅ Barcode Detected:", result.codeResult.code);
