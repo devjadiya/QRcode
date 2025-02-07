@@ -19,65 +19,69 @@ app.post('/api/scan', async (req, res) => {
             return res.status(400).json({ error: 'No base64 image provided' });
         }
 
-        // Extract MIME type and check if the format is valid
+        // Extract MIME type and validate format
         const matches = imageBase64.match(/^data:image\/(jpeg|png|webp);base64,/);
         if (!matches) {
             return res.status(400).json({ error: 'Unsupported image format. Use JPEG, PNG, or WebP' });
         }
 
-        // Remove Base64 Prefix & Convert to Buffer
+        // Convert Base64 to Buffer
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
         const imageBuffer = Buffer.from(base64Data, "base64");
 
         // Preprocess Image for Better Barcode Detection
         const processedImageBuffer = await sharp(imageBuffer)
-            .resize(1024) // Larger size for better detection
+            .resize(1024) // Resize to improve detection
             .greyscale() // Convert to grayscale
             .normalise() // Enhance contrast
             .sharpen() // Improve edges
-            .toFormat("png") // Ensure PNG format for Quagga
+            .toFormat("png") // Convert to PNG
             .toBuffer();
 
         // Convert Processed Image to Base64 for Quagga
         const processedBase64 = `data:image/png;base64,${processedImageBuffer.toString('base64')}`;
 
-        // Debug: Log if image is processed correctly
         console.log("✅ Image processed successfully");
 
-        // Quagga Barcode Scanner
-        Quagga.decodeSingle({
-            src: processedBase64,
-            numOfWorkers: 4,
-            locate: true,
-            inputStream: {
-                size: 1024, // Increased for better recognition
-                singleChannel: false
-            },
-            decoder: {
-                readers: [
-                    'ean_reader', // EAN-13, EAN-8
-                    'upc_reader', // UPC-A
-                    'upc_e_reader', // UPC-E
-                    'code_128_reader', // Code 128
-                    'code_39_reader', // Code 39
-                    'code_93_reader', // Code 93
-                    'i2of5_reader', // Interleaved 2 of 5
-                    '2of5_reader' // Standard 2 of 5
-                ]
-            }
-        }, function(result) {
-            if (result && result.codeResult) {
-                console.log("✅ Barcode Detected:", result.codeResult.code);
-                return res.json({ barcode: result.codeResult.code });
-            } else {
-                console.log("❌ No barcode detected.");
-                return res.status(404).json({ error: 'No barcode detected. Try again with a clearer image' });
-            }
+        // Run Barcode Detection in a Promise
+        const barcode = await new Promise((resolve, reject) => {
+            Quagga.decodeSingle({
+                src: processedBase64,
+                numOfWorkers: 0, // Required in Node.js
+                locate: true,
+                inputStream: {
+                    size: 1024, // Higher resolution for better recognition
+                    singleChannel: false
+                },
+                decoder: {
+                    readers: [
+                        'ean_reader', // EAN-13, EAN-8
+                        'upc_reader', // UPC-A
+                        'upc_e_reader', // UPC-E
+                        'code_128_reader', // Code 128
+                        'code_39_reader', // Code 39
+                        'code_93_reader', // Code 93
+                        'i2of5_reader', // Interleaved 2 of 5
+                        '2of5_reader' // Standard 2 of 5
+                    ]
+                }
+            }, (result) => {
+                if (result && result.codeResult) {
+                    console.log("✅ Barcode Detected:", result.codeResult.code);
+                    resolve(result.codeResult.code);
+                } else {
+                    console.log("❌ No barcode detected.");
+                    reject(new Error("No barcode detected. Try again with a clearer image."));
+                }
+            });
         });
 
+        // Send Success Response
+        return res.json({ barcode });
+
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('❌ Error:', error);
+        return res.status(500).json({ error: error.message || 'Internal server error' });
     }
 });
 
